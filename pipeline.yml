@@ -1,0 +1,106 @@
+---
+platform: linux
+
+resource_types:
+- name: concourse-pipeline
+  type: docker-image
+  source:
+    repository: concourse/concourse-pipeline-resource
+
+resources:
+- name: concourse-pipeline
+  type: concourse-pipeline
+  source:
+    target: ((concourse_url))
+    teams:
+    - name: ((concourse_team))
+      username: ((concourse_username))
+      password: ((concourse_password))
+
+- name: ci-config
+  type: git
+  source:
+    branch: master
+    uri: ((git_pipeline_url))
+    private_key: ((git_key))
+    git_crypt_key: ((git_crypt_key))
+
+- name: src
+  type: git
+  source:
+    uri: ((git_url))
+    branch: master
+    private_key: ((git_key))
+
+- name: src-workspace
+  type: git
+  source:
+    uri: ((git_url))
+    branch: workspace
+    private_key: ((git_key))
+
+- name: gh-release
+  type: github-release
+  source:
+    owner: shokinn
+    repository: emby-updater
+    access_token: ((git_access_token))
+
+#############################
+# JOBS
+#############################
+jobs:
+
+#############################
+# Update Pipeline
+#############################
+- name: update-pipeline
+  plan:
+  - get: ci-config
+    trigger: true
+  - put: concourse-pipeline
+    params:
+      pipelines:
+      - name: ((concourse_pipeline))
+        team: ((concourse_team))
+        config_file: ci-config/pipeline.yml
+        vars_files:
+        - ci-config/credentials.yml
+
+#############################
+### Deployment
+#############################
+- name: build
+  plan:
+  - get: src
+    trigger: true
+  - task: build_docs
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: shokinn/emby-updater-buildimg
+          tag: latest
+      inputs:
+        - name: src
+      outputs:
+        - name: git_access_token
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd ./src
+          /root/.local/bin/pyinstaller --onefile emby-updater.py
+          cd ../git_access_token
+          cp ../src/dist/emby-updater ./emby-updater
+          ./emby-updater --version | cut -d ' ' -f2 > ./tag
+          # Get release notes to body
+  - put: git_access_token
+    params:
+      name: tag
+      tag: tag
+      body: 
+      globs:
+      - emby-updater
