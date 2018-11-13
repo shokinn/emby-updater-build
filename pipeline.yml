@@ -45,12 +45,12 @@ resources:
     branch: workspace
     private_key: ((git_key))
 
-- name: gh-release
-  type: github-release
-  source:
-    owner: shokinn
-    repository: emby-updater
-    access_token: ((git_access_token))
+# - name: gh-release
+#   type: github-release
+#   source:
+#     owner: shokinn
+#     repository: emby-updater
+#     access_token: ((git_access_token))
 
 - name: artifact-store
   type: lftp-resource
