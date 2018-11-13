@@ -72,7 +72,7 @@ jobs:
 #############################
 - name: build-workspace
   plan:
-  - get: src
+  - get: src-workspace
     trigger: true
   - task: build_docs
     config:
@@ -91,6 +91,8 @@ jobs:
         - |
           cd ./src
           /root/.local/bin/pyinstaller --onefile emby-updater.py
+          cd ./dist
+          ./emby-updater --version
 
 #############################
 ### Build releae
