@@ -7,6 +7,12 @@ resource_types:
   source:
     repository: concourse/concourse-pipeline-resource
 
+- name: lftp-resource
+  type: docker-image
+  source:
+      repository: machinerytool/concourse-lftp-resource
+      tag: latest
+
 resources:
 - name: concourse-pipeline
   type: concourse-pipeline
@@ -25,12 +31,12 @@ resources:
     private_key: ((git_key))
     git_crypt_key: ((git_crypt_key))
 
-# - name: src
-#   type: git
-#   source:
-#     uri: ((git_url))
-#     branch: master
-#     private_key: ((git_key))
+- name: src
+  type: git
+  source:
+    uri: ((git_url))
+    branch: master
+    private_key: ((git_key))
 
 - name: src-workspace
   type: git
@@ -39,12 +45,19 @@ resources:
     branch: workspace
     private_key: ((git_key))
 
-# - name: gh-release
-#   type: github-release
-#   source:
-#     owner: shokinn
-#     repository: emby-updater
-#     access_token: ((git_access_token))
+- name: gh-release
+  type: github-release
+  source:
+    owner: shokinn
+    repository: emby-updater
+    access_token: ((git_access_token))
+
+- name: artifact-store
+  type: lftp-resource
+  source:
+    url: ftp://((ftp_user)):((ftp_password))@((ftp_uri))/artifacts/emby-updater
+    regexp: emby-updater
+
 
 #############################
 # JOBS
@@ -97,37 +110,32 @@ jobs:
 #############################
 ### Build releae
 #############################
-# - name: build
-#   plan:
-#   - get: src
-#     trigger: true
-#   - task: build_docs
-#     config:
-#       platform: linux
-#       image_resource:
-#         type: docker-image
-#         source:
-#           repository: shokinn/emby-updater-buildimg
-#           tag: latest
-#       inputs:
-#         - name: src
-#       outputs:
-#         - name: git_access_token
-#       run:
-#         path: sh
-#         args:
-#         - -exc
-#         - |
-#           cd ./src
-#           /root/.local/bin/pyinstaller --onefile emby-updater.py
-#           cd ../git_access_token
-#           cp ../src/dist/emby-updater ./emby-updater
-#           ./emby-updater --version | cut -d ' ' -f2 > ./tag
-#           # Get release notes to body
-#   - put: git_access_token
-#     params:
-#       name: tag
-#       tag: tag
-#       body: 
-#       globs:
-#       - emby-updater
+- name: build
+  plan:
+  - get: src
+    trigger: true
+  - task: build_emby-updater
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: shokinn/emby-updater-buildimg
+          tag: latest
+      inputs:
+        - name: src
+      outputs:
+        - name: artifact-store
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd ./src
+          /root/.local/bin/pyinstaller --onefile emby-updater.py
+          cd ../artifact-store
+          cp ../src/dist/emby-updater ./emby-updater
+          ./emby-updater --version
+  - put: artifact-store
+    params:
+      files: "artifact-store/emby-updater"
