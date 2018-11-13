@@ -25,19 +25,19 @@ resources:
     private_key: ((git_key))
     git_crypt_key: ((git_crypt_key))
 
-- name: src
-  type: git
-  source:
-    uri: ((git_url))
-    branch: master
-    private_key: ((git_key))
-
-# - name: src-workspace
+# - name: src
 #   type: git
 #   source:
 #     uri: ((git_url))
-#     branch: workspace
+#     branch: master
 #     private_key: ((git_key))
+
+- name: src-workspace
+  type: git
+  source:
+    uri: ((git_url))
+    branch: workspace
+    private_key: ((git_key))
 
 # - name: gh-release
 #   type: github-release
