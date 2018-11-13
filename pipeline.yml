@@ -7,11 +7,10 @@ resource_types:
   source:
     repository: concourse/concourse-pipeline-resource
 
-- name: lftp-resource
+- name: ftp
   type: docker-image
   source:
-      repository: machinerytool/concourse-lftp-resource
-      tag: latest
+    repository: aequitas/ftp-resource
 
 resources:
 - name: concourse-pipeline
@@ -53,10 +52,10 @@ resources:
 #     access_token: ((git_access_token))
 
 - name: artifact-store
-  type: lftp-resource
+  type: ftp
   source:
-    url: ftp://((ftp_user)):((ftp_password))@((ftp_uri))/artifacts/emby-updater
-    regexp: emby-updater
+    regex: (?P<file>emby-updater-(?P<version>[0-9\.]+))
+    uri: ftp://((ftp_user)):((ftp_password))@((ftp_uri))/artifacts/emby-updater/
 
 
 #############################
@@ -134,8 +133,7 @@ jobs:
           cd ./src
           /root/.local/bin/pyinstaller --onefile emby-updater.py
           cd ../artifact-store
-          cp ../src/dist/emby-updater ./emby-updater
-          ./emby-updater --version
+          cp ../src/dist/emby-updater ./emby-updater-$(../src/dist/emby-updater --version | cut -d ' ' -f2)
   - put: artifact-store
     params:
-      files: "artifact-store/emby-updater"
+      file: "artifact-store/*"
