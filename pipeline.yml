@@ -74,7 +74,7 @@ jobs:
   plan:
   - get: src-workspace
     trigger: true
-  - task: build_docs
+  - task: build_workspace
     config:
       platform: linux
       image_resource:
@@ -83,13 +83,13 @@ jobs:
           repository: shokinn/emby-updater-buildimg
           tag: latest
       inputs:
-        - name: src
+        - name: src-workspace
       run:
         path: sh
         args:
         - -exc
         - |
-          cd ./src
+          cd ./src-workspace
           /root/.local/bin/pyinstaller --onefile emby-updater.py
           cd ./dist
           ./emby-updater --version
