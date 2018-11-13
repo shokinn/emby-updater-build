@@ -32,19 +32,19 @@ resources:
     branch: master
     private_key: ((git_key))
 
-- name: src-workspace
-  type: git
-  source:
-    uri: ((git_url))
-    branch: workspace
-    private_key: ((git_key))
+# - name: src-workspace
+#   type: git
+#   source:
+#     uri: ((git_url))
+#     branch: workspace
+#     private_key: ((git_key))
 
-- name: gh-release
-  type: github-release
-  source:
-    owner: shokinn
-    repository: emby-updater
-    access_token: ((git_access_token))
+# - name: gh-release
+#   type: github-release
+#   source:
+#     owner: shokinn
+#     repository: emby-updater
+#     access_token: ((git_access_token))
 
 #############################
 # JOBS
@@ -68,9 +68,9 @@ jobs:
         - ci-config/credentials.yml
 
 #############################
-### Deployment
+### Build workspace
 #############################
-- name: build
+- name: build-workspace
   plan:
   - get: src
     trigger: true
@@ -84,8 +84,6 @@ jobs:
           tag: latest
       inputs:
         - name: src
-      outputs:
-        - name: git_access_token
       run:
         path: sh
         args:
@@ -93,14 +91,41 @@ jobs:
         - |
           cd ./src
           /root/.local/bin/pyinstaller --onefile emby-updater.py
-          cd ../git_access_token
-          cp ../src/dist/emby-updater ./emby-updater
-          ./emby-updater --version | cut -d ' ' -f2 > ./tag
-          # Get release notes to body
-  - put: git_access_token
-    params:
-      name: tag
-      tag: tag
-      body: 
-      globs:
-      - emby-updater
+
+#############################
+### Build releae
+#############################
+# - name: build
+#   plan:
+#   - get: src
+#     trigger: true
+#   - task: build_docs
+#     config:
+#       platform: linux
+#       image_resource:
+#         type: docker-image
+#         source:
+#           repository: shokinn/emby-updater-buildimg
+#           tag: latest
+#       inputs:
+#         - name: src
+#       outputs:
+#         - name: git_access_token
+#       run:
+#         path: sh
+#         args:
+#         - -exc
+#         - |
+#           cd ./src
+#           /root/.local/bin/pyinstaller --onefile emby-updater.py
+#           cd ../git_access_token
+#           cp ../src/dist/emby-updater ./emby-updater
+#           ./emby-updater --version | cut -d ' ' -f2 > ./tag
+#           # Get release notes to body
+#   - put: git_access_token
+#     params:
+#       name: tag
+#       tag: tag
+#       body: 
+#       globs:
+#       - emby-updater
